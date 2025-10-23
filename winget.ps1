@@ -3,10 +3,6 @@ param(
     [string]$install_path = "C:\Temp\WingetInstall"
 )
 
-# "It appear the progress bar updates after every byte, which is utter madness. — OrangeDog."
-# https://stackoverflow.com/questions/28682642/powershell-why-is-using-invoke-webrequest-much-slower-than-a-browser-download
-$ProgressPreference = 'SilentlyContinue'
-
 # Checar si lo corres como admin.
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
         ).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -14,27 +10,37 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-# Se crea el directorio donde se van a descargar los paquetes.
+
 if (!(Test-Path $install_path)) {
     New-Item -ItemType Directory -Path $install_path -Force | Out-Null
+    Write-Host "Directorio de descargas temporal creado en: $install_path" -ForegroundColor Green
 }
 
-# Se obtienen los enlaces de descarga del ultimo release de winget.
+Write-Host "Obteniendo enlaces de descarga." -ForegroundColor Green
 $release = Invoke-Restmethod -Uri https://api.github.com/repos/microsoft/winget-cli/releases/latest
 $bundle = $release.assets | Where-Object { $_.name -like "*.msixbundle" }
 $license = $release.assets | Where-Object { $_.name -like "*.xml" }
 $dependencies = $release.assets | Where-Object { $_.name -like "*dependencies.zip" }
 
-# Se utilizan dichos enlaces para descargar los archivos correspondientes.
-Invoke-WebRequest -Uri $bundle.browser_download_url -Outfile "$install_path\bundle.msixbundle"
-Invoke-WebRequest -Uri $license.browser_download_url -Outfile "$install_path\license.xml"
-Invoke-WebRequest -Uri $dependencies.browser_download_url -Outfile "$install_path\dependencies.zip"
+Write-Host "Descargando paquetes." -ForegroundColor Green
+Start-BitsTransfer -Source $bundle.browser_download_url -Destination "$install_path\bundle.msixbundle" -DisplayName "Descargando winget."
+Start-BitsTransfer -Source $dependencies.browser_download_url -Destination "$install_path\dependencies.zip" -DisplayName "Descargando dependencias."
+Start-BitsTransfer -Source $license.browser_download_url -Destination "$install_path\license.xml" -DisplayName "Descargando licencia."
 
-# Se extraen las dependencias.
+Write-Host "Extrayendo dependencias." -ForegroundColor Green
 Expand-Archive -Path "$install_path\dependencies.zip" -DestinationPath "$install_path\dependencies"
 
-# Se instalan todos los paquetes y el mismo winget. Se limpia todo.
+Write-Host "Instalando dependencias." -ForegroundColor Green
 Add-AppxPackage "$install_path\dependencies\x64\Microsoft.UI.Xaml*.appx"
 Add-AppxPackage "$install_path\dependencies\x64\Microsoft.VCLibs*.appx"
-Add-AppxProvisionedPackage -Online -PackagePath "$install_path\bundle.msixbundle" -LicensePath "$install_path\license.xml" -Verbose
-Remove-Item -Path $install_path -Recurse -Force
+
+Write-Host "Instalando winget." -ForegroundColor Green
+Add-AppxProvisionedPackage -Online -PackagePath "$install_path\bundle.msixbundle" -LicensePath "$install_path\license.xml"
+
+if ($?) {
+    Write-Host "Winget instalado con exito." -ForegroundColor Green
+    Remove-Item -Path $install_path -Recurse -Force
+    exit
+}
+
+Write-Error "Ocurrieron errores al instalar winget."
