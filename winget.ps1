@@ -45,5 +45,7 @@ if ($?) {
     Write-Host "Winget instalado con exito." -ForegroundColor Green
     Remove-Item -Path $install_path -Recurse -Force
 }
+else {
+    Write-Error "Ocurrieron errores al instalar winget."
+}
 
-Write-Error "Ocurrieron errores al instalar winget."
