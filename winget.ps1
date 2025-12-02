@@ -31,8 +31,12 @@ Write-Host "Extrayendo dependencias." -ForegroundColor Green
 Expand-Archive -Path "$install_path\dependencies.zip" -DestinationPath "$install_path\dependencies"
 
 Write-Host "Instalando dependencias." -ForegroundColor Green
-Add-AppxPackage "$install_path\dependencies\x64\Microsoft.UI.Xaml*.appx"
-Add-AppxPackage "$install_path\dependencies\x64\Microsoft.VCLibs*.appx"
+$installable_dependencies = Get-ChildItem "$install_path\dependencies\x64" -File
+foreach ($dependency in $installable_dependencies)
+{
+    Write-Host "Instalando: $dependency" -ForegroundColor White
+    Add-AppxPackage $dependency
+}
 
 Write-Host "Instalando winget." -ForegroundColor Green
 Add-AppxProvisionedPackage -Online -PackagePath "$install_path\bundle.msixbundle" -LicensePath "$install_path\license.xml"
@@ -40,7 +44,6 @@ Add-AppxProvisionedPackage -Online -PackagePath "$install_path\bundle.msixbundle
 if ($?) {
     Write-Host "Winget instalado con exito." -ForegroundColor Green
     Remove-Item -Path $install_path -Recurse -Force
-    exit
 }
 
 Write-Error "Ocurrieron errores al instalar winget."
