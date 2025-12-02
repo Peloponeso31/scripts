@@ -23,9 +23,9 @@ $license = $release.assets | Where-Object { $_.name -like "*.xml" }
 $dependencies = $release.assets | Where-Object { $_.name -like "*dependencies.zip" }
 
 Write-Host "Descargando paquetes." -ForegroundColor Green
+Start-BitsTransfer -Source $license.browser_download_url -Destination "$install_path\license.xml" -DisplayName "Descargando licencia."
 Start-BitsTransfer -Source $bundle.browser_download_url -Destination "$install_path\bundle.msixbundle" -DisplayName "Descargando winget."
 Start-BitsTransfer -Source $dependencies.browser_download_url -Destination "$install_path\dependencies.zip" -DisplayName "Descargando dependencias."
-Start-BitsTransfer -Source $license.browser_download_url -Destination "$install_path\license.xml" -DisplayName "Descargando licencia."
 
 Write-Host "Extrayendo dependencias." -ForegroundColor Green
 Expand-Archive -Path "$install_path\dependencies.zip" -DestinationPath "$install_path\dependencies"
@@ -34,7 +34,7 @@ Write-Host "Instalando dependencias." -ForegroundColor Green
 $installable_dependencies = Get-ChildItem "$install_path\dependencies\x64" -File
 foreach ($dependency in $installable_dependencies)
 {
-    Write-Host "Instalando: $dependency" -ForegroundColor White
+    Write-Host " - Instalando: $dependency" -ForegroundColor White
     Add-AppxPackage $dependency
 }
 
